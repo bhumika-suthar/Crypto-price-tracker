@@ -6,13 +6,13 @@ function App() {
   const [cryptoList, setCryptoList] = useState([]);
   const [selectedCrypto, setSelectedCrypto] = useState(null);
   const [priceHistory, setPriceHistory] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [showFavoritesPopup, setShowFavoritesPopup] = useState(false);
 
   useEffect(() => {
     fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd')
       .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
+        if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
       })
       .then(data => setCryptoList(data))
@@ -37,25 +37,47 @@ function App() {
     fetchPriceHistory(crypto.id);
   };
 
+  const toggleFavorite = (crypto) => {
+    setFavorites((prevFavorites) => {
+      const alreadyFavorite = prevFavorites.find(item => item.id === crypto.id);
+      return alreadyFavorite ? prevFavorites.filter(item => item.id !== crypto.id) : [...prevFavorites, crypto];
+    });
+  };
+
   const closePopup = () => {
     setSelectedCrypto(null);
     setPriceHistory([]);
   };
 
+  const toggleFavoritesPopup = () => {
+    setShowFavoritesPopup(!showFavoritesPopup);
+  };
+
   return (
     <div className="App">
-      <h1>Crypto Price Tracker</h1>
+      <header className="app-header">
+        <h1>Crypto Price Tracker</h1>
+        <button className="favorites-btn" onClick={toggleFavoritesPopup}>
+          Favorites ({favorites.length})
+        </button>
+      </header>
+
       <div className="crypto-container">
         {cryptoList.length > 0 ? (
           cryptoList.map((crypto) => (
-            <div 
-              key={crypto.id} 
-              className="crypto-card" 
-              onClick={() => handleCryptoClick(crypto)}
-            >
+            <div key={crypto.id} className="crypto-card" onClick={() => handleCryptoClick(crypto)}>
               <h2>{crypto.name}</h2>
               <p>Current Price: ${crypto.current_price}</p>
               <img src={crypto.image} alt={crypto.name} width={50} />
+              <button
+                className={`favorite-toggle-btn ${favorites.some(item => item.id === crypto.id) ? 'favorited' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(crypto);
+                }}
+              >
+                {favorites.some(item => item.id === crypto.id) ? '❤️ Favorited' : '🤍 Favorite'}
+              </button>
             </div>
           ))
         ) : (
@@ -76,6 +98,32 @@ function App() {
               </LineChart>
             </ResponsiveContainer>
             <button className="close-btn" onClick={closePopup}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {showFavoritesPopup && (
+        <div className="popup">
+          <div className="popup-content">
+            <h2>Your Favorite Cryptocurrencies</h2>
+            <ul className="favorites-list">
+              {favorites.length > 0 ? (
+                favorites.map((crypto) => (
+                  <li key={crypto.id} className="favorites-item">
+                    <span>{crypto.name} - ${crypto.current_price}</span>
+                    <button
+                      className="remove-btn"
+                      onClick={() => toggleFavorite(crypto)}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))
+              ) : (
+                <p>No favorites added yet!</p>
+              )}
+            </ul>
+            <button className="close-btn" onClick={toggleFavoritesPopup}>Close</button>
           </div>
         </div>
       )}
